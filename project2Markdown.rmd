@@ -9,3 +9,161 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+##Synopsis 
+In this report we aim to describe the impact of severe weather events on public health and economic problems. This analysis used the data obtained from U.S. National Ocenaic and Atomospheric Adminstation's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.From the data, we found that torando was the weather conditions that caused most fatalities and injuries in the U.S., with 5,633 cases and 91,346 cases respectively. For economic damaage, flood had the greatest damage with over 150 billion lost in $US. 
+
+###Data processing
+First the dataset is downloaded from the sources and read into `fulldataset`. 
+```{r load data, cache = TRUE}
+fileurl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+temp <- tempfile()
+download.file (fileurl, temp) # save tge file into temp file
+fulldataset <- read.csv(temp, na.strings = "NA")
+unlink (temp) #unlink the temp file with the zip
+rm (temp) # remove temp from the object list
+```
+
+Only the required varaiables are selected for the analysis in the next step. The variable list is obtained by the following
+```{r variable list}
+variablelist <- names (fulldataset)
+```
+The the following is the full list of variables. 
+```{r variable list print, echo = FALSE}
+print (variablelist)
+```
+
+The requied varialbes are captured in the new variables of `selectedvariable`, and the following are the selected variables.
+```{r selected the variable}
+selectedvariable <- variablelist[c(8, 23, 24, 25, 26, 27, 28)]
+```
+```{r selected variable, echo = FALSE}
+print (selectedvariable)
+```
+
+The required `dataset` are subsetted from the full data set. 
+
+```{r subsetting}
+dataset <- fulldataset[ ,c(selectedvariable)]
+```
+
+###Data transforming
+To further analyze, the package of `dplyr` and `ggplot2` are loaded.
+```{r load library, results='hide', message=FALSE, warning=FALSE}
+library (ggplot2)
+library (dplyr)
+```
+
+Before transforming, we check if there are cases of NA in the dataset. 
+```{r check na}
+sapply (dataset, function(x) sum(is.na(x)))
+```
+
+There are no NA cases in any of the variables, thus, we can transform the data directly. We first converting the actual lost / damanage in money term. The actual property damanage is `ACTPROPDMG` and the actual crop damage is `ACTCROPDMG`. We then calculate the total damanage by summing up these two variables in `TOTALDMG`. 
+
+```{r transforming}
+#calacuate the exact number of property damange
+dataset <- dataset %>% mutate (ACTPROPDMG = ifelse (
+        PROPDMGEXP == "K", PROPDMG*1000, ifelse (
+                PROPDMGEXP == "m" | PROPDMGEXP == "M", PROPDMG*1000000, ifelse(
+                        PROPDMGEXP == "B", PROPDMG*1000000000, ifelse (
+                                PROPDMGEXP =="h" | PROPDMGEXP =="H", PROPDMG*100, PROPDMG)
+                )
+        )
+))
+
+#calculate the exact number of crop damage
+dataset <- dataset %>% mutate (ACTCROPDMG = ifelse (
+        CROPDMGEXP == "K" | CROPDMGEXP == "k", CROPDMG*1000, ifelse (
+                CROPDMGEXP == "M" | CROPDMGEXP == "m", CROPDMG*1000000, ifelse(
+                        CROPDMGEXP == "B", CROPDMG*1000000000, CROPDMG
+                )
+        )
+)  )
+
+#calculate the total damage
+dataset <- dataset %>% mutate (TOTALDMG = ACTPROPDMG + ACTCROPDMG)
+```
+
+###Results
+###Fatalities 
+The total fatalities cases of all kinds of severe weather conditions are calculated. 
+```{r fatalities}
+fatalities <- dataset %>% group_by (EVTYPE) %>% summarize (FATALITIES = sum(FATALITIES))
+fatalities <- fatalities %>% arrange (desc(FATALITIES)) 
+```
+
+The following table shows the top 5 conditions with the most fatalities cases with the following graph
+```{r top 5 fatalities, echo = FALSE}
+head (fatalities, 5)
+```
+
+```{r plot fatalities}
+ggplot (data = head (fatalities, 10),
+        aes(x=reorder(EVTYPE, -FATALITIES), y=FATALITIES))+
+        geom_bar(stat = "identity")+
+        xlab("Weather Event")+ylab("Fatalities")+
+        theme(axis.text.x = element_text(size = 7))+
+        ggtitle("Top 10 fatalities of severe weather event")
+```
+
+
+From the above analysis, tornado is the weather condition that caused most of the fatal cases. 
+
+###Injuries 
+The total injuries cases of all kind of severe weather conditions are calculated. 
+```{r injuries}
+injuries <- dataset %>% group_by (EVTYPE) %>% summarize (INJURIES = sum (INJURIES))
+injuries <- injuries %>% arrange (desc (INJURIES)) 
+```
+
+The following table shows the top 5 conditions with the most injuries cases with the following graph. 
+```{r top 5 injuries, echo=FALSE}
+head (injuries, 5)
+```
+
+```{r plot injuries}
+ggplot (data = head (injuries, 10),
+        aes(x=reorder(EVTYPE, -INJURIES), y=INJURIES))+
+        geom_bar(stat = "identity")+
+        xlab("Weather Event")+ylab("Injuries")+
+        theme(axis.text.x = element_text(size = 7))+
+        ggtitle("Top 10 injuries of severe weather event")
+```
+
+
+From the above analysis, tornado is also the weather conditions that caused most of the injury cases. And the cases of tornado is `r fatalities[1,2]/fatalities[2,2]` times more and `r injuries[1,2]/injuries[2,2]` times more than the second most conditions in fatalities and injuries respectively. For the other weather conditions, only excessive heat rank in both top 5 fatal and injury case, which is `r fatalities[2,2]` and `r injuries[4,2]` respectively.  
+
+###Economic damanage
+In terms of economic damage, we combine the data of property damage and crop damage. The analysis is based on the total lost of US dollars of both kind of damage. 
+
+```{r total damage}
+totaldmg <- dataset %>% group_by (EVTYPE) %>% summarize (TOTALDMG = sum(TOTALDMG))
+totaldmg <- totaldmg %>% arrange (desc (TOTALDMG))
+```
+
+The following table shows the top 5 conditions with the most economic damage in USD, with the graph
+```{r top 5 damage, echo=FALSE}
+head(totaldmg, 5)
+```
+
+```{r plot damage}
+ggplot (data = head (totaldmg, 10),
+        aes (x=reorder(EVTYPE, -TOTALDMG), y=TOTALDMG/1000000000))+
+        geom_bar(stat = "identity")+
+        xlab("Weather Event") + ylab ("Total Damage in billion $US")+
+        theme (axis.text.x = element_text(size = 7))+
+        ggtitle ("Top 10 damage of severe weather event")
+```
+
+
+From the above graph, flood create the most economic damage, and it is `r totaldmg[1,2]/totaldmg[2,2]` than the second most condition, Hurricane. 
+
+
+
+
+
+
+
+
+
+
