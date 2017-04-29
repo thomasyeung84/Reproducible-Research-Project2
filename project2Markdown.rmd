@@ -1,0 +1,11 @@
+---
+title: "Impact of Severe Weather Event in US"
+author: "Thomas Yeung"
+date: "April 29, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
