@@ -133,7 +133,7 @@ ggplot (data = head (injuries, 10),
 
 From the above analysis, tornado is also the weather conditions that caused most of the injury cases. And the cases of tornado is `r fatalities[1,2]/fatalities[2,2]` times more and `r injuries[1,2]/injuries[2,2]` times more than the second most conditions in fatalities and injuries respectively. For the other weather conditions, only excessive heat rank in both top 5 fatal and injury case, which is `r fatalities[2,2]` and `r injuries[4,2]` respectively.  
 
-###Economic damanage
+###Economic damage
 In terms of economic damage, we combine the data of property damage and crop damage. The analysis is based on the total lost of US dollars of both kind of damage. 
 
 ```{r total damage}
